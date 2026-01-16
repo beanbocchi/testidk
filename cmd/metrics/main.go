@@ -9,7 +9,21 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	dto "github.com/prometheus/client_model/go"
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/mem"
+)
+
+var (
+	systemCpuUsage = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "system_cpu_usage_percent",
+		Help: "System CPU usage percentage",
+	})
+	systemMemUsage = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "system_memory_usage_bytes",
+		Help: "System memory usage in bytes",
+	})
 )
 
 func main() {
@@ -21,6 +35,18 @@ func main() {
 
 	ticker := time.NewTicker(2 * time.Second)
 	for range ticker.C {
+		// Collect System Metrics
+		v, err := mem.VirtualMemory()
+		if err == nil {
+			systemMemUsage.Set(float64(v.Used))
+		}
+
+		// CPU usage since last call (interval=0)
+		c, err := cpu.Percent(0, false)
+		if err == nil && len(c) > 0 {
+			systemCpuUsage.Set(c[0])
+		}
+
 		mfs, err := prometheus.DefaultGatherer.Gather()
 		if err != nil {
 			log.Printf("Error gathering metrics: %v", err)
@@ -40,7 +66,6 @@ func main() {
 				case dto.MetricType_UNTYPED:
 					val = m.GetUntyped().GetValue()
 				default:
-					// Skip Summary and Histogram for this simple proxy explanation
 					continue
 				}
 				metrics[name] = val
@@ -70,6 +95,6 @@ func main() {
 		}
 		resp.Body.Close()
 
-		fmt.Printf("Pushed %d metrics\n", len(metrics))
+		fmt.Printf("Pushed %d metrics (CPU: %.2f%%, Mem: %v bytes)\n", len(metrics), systemCpuUsage.Desc().String(), v.Used)
 	}
 }
