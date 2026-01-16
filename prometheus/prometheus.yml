@@ -1,0 +1,34 @@
+# Prometheus Configuration Template
+global:
+  scrape_interval: 15s          # How frequently to scrape targets
+  evaluation_interval: 15s      # How frequently to evaluate rules
+  scrape_timeout: 10s           # Timeout for scraping
+
+# Alertmanager configuration (optional)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets:
+#           - alertmanager:9093
+
+# Rule files (optional)
+# rule_files:
+#   - "alerts/*.yml"
+
+# Scrape configuration
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # Go application metrics
+  - job_name: "go-app"
+    static_configs:
+      - targets: ["host.docker.internal:8080"]  # Windows/Mac Docker
+      # - targets: ["172.17.0.1:8080"]          # Linux Docker
+
+  # Example: Node Exporter for system metrics
+  # - job_name: "node-exporter"
+  #   static_configs:
+  #     - targets: ["node-exporter:9100"]
